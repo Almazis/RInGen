@@ -591,6 +591,7 @@ let private baseRule q fromAtoms toAtom =
     Rule(q, fromAtoms, toAtom)
 let aerule forallVars existsVars fromAtoms toAtom = baseRule (Quantifiers.add (ExistsQuantifier existsVars) <| Quantifiers.forall forallVars) fromAtoms toAtom
 let rule vars fromAtoms toAtom = baseRule (Quantifiers.forall vars) fromAtoms toAtom
+let eqRule vars fromAtoms toAtom = Equivalence((Quantifiers.forall vars), fromAtoms, toAtom)
 
 type definition =
     | DefineFun of function_def
