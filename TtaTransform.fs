@@ -21,6 +21,8 @@ type AutomataRecord =
       delta : operation
       reach: operation }
 
+let notop = Operation.makeElementaryRelationFromSorts "not" [boolSort]
+
 type Processer(adts) =
     // TODO: optimization
     let m = adts |> List.map snd |> List.concat |> List.map snd |> List.map (List.length) |> List.max
@@ -97,7 +99,7 @@ type Processer(adts) =
             let forallQuant = ForallQuantifier(forallVars)
             let deltaAxiom = TransformedCommand (Equivalence([forallQuant], r, l))
             
-            // TODO: diseqAxioms ??
+            // TODO: diseq + diseqAxioms ??
             // Note : diseq decls are generated twice, see parseDeclarations
             // let diseqRelName = x.getDiseqRelName s
             // let diseqDecls, diseqRec = x.generateAutomataDeclarations diseqRelName [s; s]
@@ -256,8 +258,18 @@ type Processer(adts) =
         let finalAxiom =
             let li = TApply(prodOp, stateTerms)
             let l = AApply(cRecord.isFinal, [li])
-            let rs = List.map2 (fun r q -> AApply(r.isFinal, [q]) ) positions stateTerms 
-            eqRule stateVars rs l
+            let rs,lastR = positions |> List.splitAt (clauseLen - 1)
+            let states, lastState = stateTerms |> List.splitAt (clauseLen - 1)
+            let rs = List.map2 (fun r q -> AApply(r.isFinal, [q]) ) rs states 
+            // head isFinal is negated
+            let lastR = List.exactlyOne lastR
+            let lastR =
+                match head with
+                | Bot ->
+                    AApply(lastR.isFinal, lastState)
+                | _ ->
+                    AApply(notop, [TApply(lastR.isFinal, lastState)])
+            eqRule stateVars (rs @ [lastR]) l
         let reachInit =
             rule [] [] (AApply(cRecord.reach, [cRecord.initConst]))
         let reachDelta =
@@ -271,7 +283,7 @@ type Processer(adts) =
             let qVar = ("q", stateSort)
             let qTerm = TIdent qVar               
             let l = AApply(cRecord.reach, [qTerm])
-            let r = AApply(cRecord.isFinal, [qTerm])
+            let r = AApply(notop, [TApply(cRecord.isFinal, [qTerm])])
             rule [qVar] [l] r
         
         axioms @ clauseDecls @ List.map TransformedCommand [initAxiom; deltaAxiom; finalAxiom; reachInit; reachDelta; condition]
