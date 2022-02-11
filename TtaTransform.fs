@@ -241,6 +241,11 @@ type Processer(adts) =
             Operation.makeElementaryOperationFromSorts prodName ss stateSort
         
         // TODO: what if m > 1
+        let initAxiom =
+            let l = cRecord.initConst
+            let inits = List.map (fun r -> r.initConst) positions
+            let r = TApply(prodOp, inits)
+            rule [] [] (AApply(equal_op stateSort, [l; r]))
         let deltaAxiom =
             let atomsTerms = List.map (List.map TIdent) atomsVars
             let rs = List.map3 (fun r vs s -> TApply(r.delta, vs @ [s]) ) positions atomsTerms stateTerms
@@ -269,7 +274,7 @@ type Processer(adts) =
             let r = AApply(cRecord.isFinal, [qTerm])
             rule [qVar] [l] r
         
-        axioms @ clauseDecls @ List.map TransformedCommand [deltaAxiom; finalAxiom; reachInit; reachDelta; condition]
+        axioms @ clauseDecls @ List.map TransformedCommand [initAxiom; deltaAxiom; finalAxiom; reachInit; reachDelta; condition]
     
     member x.procRules rules =
         rules |> List.mapi x.procRule
